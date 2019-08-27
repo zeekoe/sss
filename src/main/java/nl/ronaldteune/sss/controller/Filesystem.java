@@ -29,7 +29,7 @@ public class Filesystem {
             for(Path p : artistAlbumPaths) {
                 final String artist = getArtist(p);
                 final String album = getAlbum(p);
-                final DBAlbum t = new DBAlbum(i++, artist + "/" + album, artist, album);
+                final DBAlbum t = new DBAlbum(++i, artist + "/" + album, artist, album);
                 fsAlbums.add(t);
             }
         } catch (IOException e) {
