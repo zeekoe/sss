@@ -19,7 +19,7 @@ public class Child {
     private String contentType;
     private String suffix;
     private int duration;
-    private int bitrate;
+    private int bitRate;
     private String path;
 
     public String getId() {
@@ -135,11 +135,11 @@ public class Child {
     }
 
     public int getBitRate() {
-        return bitrate;
+        return bitRate;
     }
 
-    public void setBitrate(int bitrate) {
-        this.bitrate = bitrate;
+    public void setBitRate(int bitRate) {
+        this.bitRate = bitRate;
     }
 
     public String getPath() {

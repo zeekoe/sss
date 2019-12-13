@@ -50,4 +50,8 @@ public class Database {
                 .sorted(Comparator.comparing(DBAlbum::getArtist))
                 .collect(Collectors.toList());
     }
+
+    public void updateAlbum(DBAlbum dbAlbum) throws SQLException {
+        albumDao.update(dbAlbum);
+    }
 }

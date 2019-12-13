@@ -16,10 +16,11 @@ public class DBAlbum {
         this.title = title;
     }
 
-    @DatabaseField private int id;
+    @DatabaseField(id = true) private int id;
     @DatabaseField private String url;
     @DatabaseField private String artist;
     @DatabaseField private String title;
+    @DatabaseField private String tracks;
 
     public int getId() {
         return id;
@@ -56,5 +57,13 @@ public class DBAlbum {
 
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    public String getTracks() {
+        return tracks;
+    }
+
+    public void setTracks(String tracks) {
+        this.tracks = tracks;
     }
 }

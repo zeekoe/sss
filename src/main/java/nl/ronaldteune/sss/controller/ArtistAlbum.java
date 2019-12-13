@@ -1,5 +1,7 @@
 package nl.ronaldteune.sss.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.bramp.ffmpeg.FFprobe;
 import net.bramp.ffmpeg.probe.FFmpegFormat;
 import net.bramp.ffmpeg.probe.FFmpegProbeResult;
@@ -16,6 +18,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -56,56 +59,70 @@ public class ArtistAlbum {
     }
 
     private Directory buildTrackList(List<DBAlbum> allAlbums, String albumId) {
-        return directoryCache.get("buildTrackList" + albumId, () -> {
-            Directory directory = new Directory();
-            DBAlbum album = getAlbumFromId(allAlbums, albumId);
-            directory.setId(album.getIdString());
-            directory.setParent("ARTIST-" + album.getIdString());
-            directory.setName(album.getTitle());
-            try (Stream<Path> paths = Files.walk(getPathFromAlbum(album))) {
-                final List<Path> songs = paths
-                        .sorted(Comparator.comparing(p -> p.getFileName().toString()))
-                        .collect(Collectors.toList());
-                for (int songId = 0; songId < songs.size(); songId++) {
-                    Path song = songs.get(songId);
-                    if (song.getFileName().toString().endsWith("mp3")
-                            || song.getFileName().toString().endsWith("ogg")
-                            || song.getFileName().toString().endsWith("flac")) {
-
-                        final String songTitleFromPath = song.toString().replace(getPathFromAlbum(album).toAbsolutePath().toString() + "/", "");
-                        FFprobe probe = new FFprobe("/usr/bin/ffprobe");
-                        final FFmpegProbeResult probeResult = probe.probe(song.toString());
-                        final FFmpegFormat format = probeResult.getFormat();
-
-                        Child child = new Child();
-                        child.setId(album.getIdString() + "-" + songId);
-                        child.setParent(albumId);
-                        child.setAlbum(album.getTitle());
-                        child.setArtist(album.getArtist());
-                        if (format.tags == null) {
-                            try {
-                                child.setTrack("" + Integer.parseInt(songTitleFromPath.split("-")[0]));
-                            } catch (Exception e) {
-                                child.setTrack("");
-                            }
-                            child.setTitle(songTitleFromPath);
-                        } else {
-                            child.setTrack(format.tags.containsKey("track") ? format.tags.get("track").split("/")[0] : "");
-                            child.setTitle(format.tags.getOrDefault("title", song.toString().replace(MUSIC_PATH, "")));
-                        }
-                        child.setBitrate((int) format.bit_rate / 1000);
-                        child.setDuration((int) format.duration);
-                        child.setCoverArt(albumId);
-                        child.setDir(false);
-                        child.setPath(song.toString().replace(MUSIC_PATH, ""));
-                        directory.addChild(child);
-                    }
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        DBAlbum album = getAlbumFromId(allAlbums, albumId);
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            final Directory directory = mapper.readValue(album.getTracks(), Directory.class);
+            System.out.println("From db cache: " + directory.getName());
             return directory;
-        });
+        } catch (Exception e) {
+
+            return directoryCache.get("buildTrackList" + albumId, () -> {
+                Directory directory = new Directory();
+                directory.setId(album.getIdString());
+                directory.setParent("ARTIST-" + album.getIdString());
+                directory.setName(album.getTitle());
+                try (Stream<Path> paths = Files.walk(getPathFromAlbum(album))) {
+                    final List<Path> songs = paths
+                            .sorted(Comparator.comparing(p -> p.getFileName().toString()))
+                            .collect(Collectors.toList());
+                    for (int songId = 0; songId < songs.size(); songId++) {
+                        Path song = songs.get(songId);
+                        if (song.getFileName().toString().endsWith("mp3")
+                                || song.getFileName().toString().endsWith("ogg")
+                                || song.getFileName().toString().endsWith("flac")) {
+
+                            final String songTitleFromPath = song.toString().replace(getPathFromAlbum(album).toAbsolutePath().toString() + "/", "");
+                            FFprobe probe = new FFprobe("/usr/bin/ffprobe");
+                            final FFmpegProbeResult probeResult = probe.probe(song.toString());
+                            final FFmpegFormat format = probeResult.getFormat();
+
+                            Child child = new Child();
+                            child.setId(album.getIdString() + "-" + songId);
+                            child.setParent(albumId);
+                            child.setAlbum(album.getTitle());
+                            child.setArtist(album.getArtist());
+                            if (format.tags == null) {
+                                try {
+                                    child.setTrack("" + Integer.parseInt(songTitleFromPath.split("-")[0]));
+                                } catch (Exception ignored) {
+                                    child.setTrack("");
+                                }
+                                child.setTitle(songTitleFromPath);
+                            } else {
+                                child.setTrack(format.tags.containsKey("track") ? format.tags.get("track").split("/")[0] : "");
+                                child.setTitle(format.tags.getOrDefault("title", song.toString().replace(MUSIC_PATH, "")));
+                            }
+                            child.setBitRate((int) format.bit_rate / 1000);
+                            child.setDuration((int) format.duration);
+                            child.setCoverArt(albumId);
+                            child.setDir(false);
+                            child.setPath(song.toString().replace(MUSIC_PATH, ""));
+                            directory.addChild(child);
+                        }
+                    }
+                } catch (IOException ignored) {
+                    e.printStackTrace();
+                }
+                try {
+                    album.setTracks(mapper.writeValueAsString(directory));
+                    new Database().updateAlbum(album);
+                } catch (JsonProcessingException | SQLException ignored) {
+                }
+
+                return directory;
+            });
+        }
     }
 
     private Path getPathFromAlbum(DBAlbum album) {
@@ -150,7 +167,8 @@ public class ArtistAlbum {
         final Path albumPath = getPathFromAlbum(getAlbumFromId(allAlbums, id));
         try {
             return SoundStream.getStream(albumPath.resolve("cover.jpg").toString());
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return new byte[0];
     }
 }
