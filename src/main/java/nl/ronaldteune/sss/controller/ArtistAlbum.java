@@ -72,7 +72,7 @@ public class ArtistAlbum {
                             || song.getFileName().toString().endsWith("ogg")
                             || song.getFileName().toString().endsWith("flac")) {
 
-                        final String subPath = song.toString().replace(MUSIC_PATH, "");
+                        final String subPath = song.toString().replace(getPathFromAlbum(album).toAbsolutePath().toString() + "/", "");
                         FFprobe probe = new FFprobe("/usr/bin/ffprobe");
                         final FFmpegProbeResult probeResult = probe.probe(song.toString());
                         final FFmpegFormat format = probeResult.getFormat();
@@ -82,8 +82,17 @@ public class ArtistAlbum {
                         child.setParent(albumId);
                         child.setAlbum(album.getTitle());
                         child.setArtist(album.getArtist());
-                        child.setTrack(format.tags != null && format.tags.containsKey("track") ? format.tags.get("track").split("/")[0] : "");
-                        child.setTitle(format.tags != null ? format.tags.getOrDefault("title", subPath) : "");
+                        if (format.tags == null) {
+                            try {
+                                child.setTrack("" + Integer.parseInt(subPath.split("-")[0]));
+                            } catch (Exception e) {
+                                child.setTrack("");
+                            }
+                            child.setTitle(subPath);
+                        } else {
+                            child.setTrack(format.tags.containsKey("track") ? format.tags.get("track").split("/")[0] : "");
+                            child.setTitle(format.tags.getOrDefault("title", subPath));
+                        }
                         child.setBitrate((int) format.bit_rate / 1000);
                         child.setDuration((int) format.duration);
                         child.setCoverArt(albumId);
