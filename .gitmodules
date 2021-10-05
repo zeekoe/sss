@@ -1,0 +1,6 @@
+[submodule "minisub"]
+	path = minisub
+	url = git@github.com:zeekoe/minisub.git
+[submodule "src/main/resources/minisub"]
+	path = src/main/resources/minisub
+	url = git@github.com:zeekoe/minisub.git
