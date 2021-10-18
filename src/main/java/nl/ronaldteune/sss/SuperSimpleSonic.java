@@ -31,7 +31,7 @@ public class SuperSimpleSonic {
         exception(Exception.class, (exception, request, response) -> {
             exception.printStackTrace();
         });
-        staticFiles.location("minisub");
+        staticFiles.location("static");
         port(8080);
         get("/rest/ping.view", SuperSimpleSonic::ping);
         get("/rest/getMusicFolders.view", SuperSimpleSonic::getMusicFolders);

@@ -2,5 +2,5 @@
 	path = minisub
 	url = git@github.com:zeekoe/minisub.git
 [submodule "src/main/resources/minisub"]
-	path = src/main/resources/minisub
+	path = src/main/resources/static/minisub
 	url = git@github.com:zeekoe/minisub.git
